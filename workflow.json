@@ -1,0 +1,180 @@
+{
+  "name": "GA4 → InfluxDB Analytics Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "d2edf82f-dee1-48ca-aa56-71571be074ac",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "propertyId": {
+          "__rl": true,
+          "value": "YOUR_GA4_PROPERTY_ID",
+          "mode": "id"
+        },
+        "dateRange": "last30days",
+        "metricsGA4": {
+          "metricValues": [
+            {},
+            {
+              "listName": "sessions"
+            },
+            {
+              "listName": "active7DayUsers"
+            },
+            {
+              "listName": "userEngagementDuration"
+            },
+            {
+              "listName": "screenPageViews"
+            }
+          ]
+        },
+        "dimensionsGA4": {
+          "dimensionValues": [
+            {},
+            {
+              "listName": "city"
+            },
+            {
+              "listName": "country"
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.googleAnalytics",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "c04f2540-3e84-47df-ab81-de2a84d0ea22",
+      "name": "Get a report",
+      "credentials": {
+        "googleAnalyticsOAuth2": {
+          "id": "YOUR_GA_CREDENTIAL_ID",
+          "name": "Google Analytics account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR_INFLUXDB_URL/api/v2/write?org=YOUR_ORG&bucket=YOUR_BUCKET",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "text/plain; charset=utf-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "Text/Plain",
+        "body": "=website_stats,date={{ $json.date }},country={{ $json.country }},city={{ $json.city }} sessions={{ $json.sessions }}i,totalUsers={{ $json.totalUsers }}i,pageViews={{ $json.screenPageViews }}i,engagementDuration={{ $json.userEngagementDuration }}i",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        624,
+        0
+      ],
+      "id": "546673c1-71af-4764-9665-6c7c0122bbe1",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_INFLUXDB_CREDENTIAL_ID",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const newItems = [];\n\nfor (const item of $input.all()) {\n  const country = (item.json.country || 'Unknown')\n    .replace(/ /g, '_')\n    .replace(/[^a-zA-Z0-9_]/g, '');\n  \n  const city = (item.json.city || 'Unknown')\n    .replace(/ /g, '_')\n    .replace(/[^a-zA-Z0-9_]/g, '');\n  \n  newItems.push({\n    json: {\n      ...item.json,\n      country: country,\n      city: city\n    }\n  });\n}\n\nreturn newItems;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "3d3ede48-d7a8-45f4-a179-a23d89477f7b",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get a report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a report": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "YOUR_VERSION_ID",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_INSTANCE_ID"
+  },
+  "tags": [
+    {
+      "name": "googleanalytics",
+      "id": "YOUR_TAG_ID",
+      "updatedAt": "2026-04-21T10:03:58.394Z",
+      "createdAt": "2026-04-21T10:03:58.394Z"
+    }
+  ]
+}
